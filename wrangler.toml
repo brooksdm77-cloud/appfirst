@@ -1,0 +1,33 @@
+name = "smartgrocer-nz"
+type = "javascript"
+account_id = ""
+workers_dev = true
+route = ""
+zone_id = ""
+
+[env.production]
+name = "smartgrocer-nz-prod"
+routes = [
+  { pattern = "example.com/*", zone_name = "example.com" }
+]
+
+[build]
+command = "npm run build"
+cwd = "./"
+watch_paths = ["src/**/*.tsx", "src/**/*.css"]
+
+[build.upload]
+format = "service-worker"
+
+[[build.upload.rules]]
+type = "CompiledContentType"
+globs = ["**/*.wasm"]
+fallthrough = true
+
+[[build.upload.rules]]
+type = "Text"
+globs = ["**/*.js"]
+
+[[build.upload.rules]]
+type = "Text"
+globs = ["**/*.css"]

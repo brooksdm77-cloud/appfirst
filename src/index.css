@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  @apply box-border;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900;
+}
+
+/* Custom animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Utility classes */
+.card {
+  @apply bg-white rounded-lg shadow-md p-6 border border-gray-200;
+}
+
+.btn-primary {
+  @apply px-4 py-2 bg-nz-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply px-4 py-2 bg-gray-200 text-gray-900 rounded-lg font-medium hover:bg-gray-300 transition-colors;
+}
+
+.btn-danger {
+  @apply px-4 py-2 bg-nz-danger text-white rounded-lg font-medium hover:bg-red-600 transition-colors;
+}
+
+.input-field {
+  @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-nz-primary focus:border-transparent;
+}
+
+.badge {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+}
+
+.badge-success {
+  @apply bg-green-100 text-nz-success;
+}
+
+.badge-warning {
+  @apply bg-yellow-100 text-nz-warning;
+}
+
+.badge-danger {
+  @apply bg-red-100 text-nz-danger;
+}
+
+.alert {
+  @apply p-4 rounded-lg border;
+}
+
+.alert-success {
+  @apply bg-green-50 border-nz-success text-nz-success;
+}
+
+.alert-warning {
+  @apply bg-yellow-50 border-nz-warning text-nz-warning;
+}
+
+.alert-error {
+  @apply bg-red-50 border-nz-danger text-nz-danger;
+}
+
+.alert-info {
+  @apply bg-blue-50 border-nz-primary text-nz-primary;
+}
