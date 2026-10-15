@@ -1,5 +1,7 @@
 export interface Product {
   name: string
+  category?: string
+  emoji?: string
   prices: {
     Woolworths: number
     PAKnSAVE: number
@@ -7,6 +9,7 @@ export interface Product {
   }
   historicAvg: number
 }
+
 
 export interface StorePrices {
   Woolworths: number
@@ -25,6 +28,15 @@ export interface OptimizationResult {
     PAKnSAVE: string[]
     NewWorld: string[]
   }
+}
+
+export interface DiscountedItem {
+  name: string
+  discount: number
+  savings: number
+  store: 'Woolworths' | 'PAKnSAVE' | 'NewWorld'
+  currentPrice: number
+  historicAvg: number
 }
 
 export interface UserAccount {

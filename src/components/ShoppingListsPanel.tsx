@@ -58,17 +58,23 @@ export const ShoppingListsPanel: React.FC = () => {
             <p className="text-sm text-gray-500 italic">Your core weekly list is empty.</p>
           ) : (
             <div className="space-y-2">
-              {currentUserData.lists.weekly.map((item) => (
-                <div key={item} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                  <span className="text-gray-900">🍏 {item}</span>
-                  <button
-                    onClick={() => removeFromWeekly(item)}
-                    className="btn-danger text-sm px-3 py-1"
-                  >
-                    ❌ Remove
-                  </button>
-                </div>
-              ))}
+              {currentUserData.lists.weekly.map((item) => {
+                const prod = NZ_SUPERMARKET_CATALOGUE[item]
+                return (
+                  <div key={item} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <span className="text-gray-900 font-medium flex items-center gap-2">
+                      <span className="text-xl">{prod?.emoji || '🍏'}</span>
+                      <span>{item}</span>
+                    </span>
+                    <button
+                      onClick={() => removeFromWeekly(item)}
+                      className="btn-danger text-xs px-2.5 py-1"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
@@ -82,17 +88,23 @@ export const ShoppingListsPanel: React.FC = () => {
             <p className="text-sm text-gray-500 italic">No custom special alerts tracked.</p>
           ) : (
             <div className="space-y-2">
-              {currentUserData.lists.occasional.map((item) => (
-                <div key={item} className="flex items-center justify-between bg-yellow-50 p-3 rounded-lg">
-                  <span className="text-gray-900">📦 {item} <span className="text-xs text-yellow-600">Monitored</span></span>
-                  <button
-                    onClick={() => removeFromOccasional(item)}
-                    className="btn-danger text-sm px-3 py-1"
-                  >
-                    ❌ Remove
-                  </button>
-                </div>
-              ))}
+              {currentUserData.lists.occasional.map((item) => {
+                const prod = NZ_SUPERMARKET_CATALOGUE[item]
+                return (
+                  <div key={item} className="flex items-center justify-between bg-yellow-50/60 p-3 rounded-lg border border-yellow-200">
+                    <span className="text-gray-900 font-medium flex items-center gap-2">
+                      <span className="text-xl">{prod?.emoji || '📦'}</span>
+                      <span>{item} <span className="text-xs text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded-full ml-1 font-semibold">Monitored</span></span>
+                    </span>
+                    <button
+                      onClick={() => removeFromOccasional(item)}
+                      className="btn-danger text-xs px-2.5 py-1"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
@@ -120,14 +132,18 @@ export const ShoppingListsPanel: React.FC = () => {
               onChange={(e) => setSelectedProduct(e.target.value)}
               className="input-field"
             >
-              <option value="">-- Choose Item --</option>
-              {productNames.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
+              <option value="">-- Choose Item ({productNames.length} Products Available) --</option>
+              {productNames.map((name) => {
+                const prod = NZ_SUPERMARKET_CATALOGUE[name]
+                return (
+                  <option key={name} value={name}>
+                    {prod?.emoji || '📦'} {name} ({prod?.category})
+                  </option>
+                )
+              })}
             </select>
           </div>
+
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -160,6 +176,7 @@ export const ShoppingListsPanel: React.FC = () => {
           </button>
         </div>
       </div>
-    </div>
+
+      </div>
   )
 }

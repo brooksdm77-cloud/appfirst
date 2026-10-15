@@ -1,6 +1,7 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { AppState, UserAccount } from '../types'
-import { DEMO_ACCOUNT, NZ_SUPERMARKET_CATALOGUE } from '../utils/constants'
+import { DEMO_ACCOUNT } from '../utils/constants'
 
 const initialRegisteredAccounts: Record<string, UserAccount> = {
   [DEMO_ACCOUNT.email]: {
@@ -21,12 +22,16 @@ interface AppStore extends AppState {
   addItemToOccasional: (itemName: string) => boolean
   removeFromWeekly: (itemName: string) => void
   removeFromOccasional: (itemName: string) => void
+  loadWeeklyPreset: (items: string[]) => void
 }
 
-export const useAppStore = create<AppStore>((set, get) => ({
-  loggedInUser: null,
-  registeredAccounts: initialRegisteredAccounts,
-  currentUserData: null,
+
+export const useAppStore = create<AppStore>()(
+  persist(
+    (set, get) => ({
+      loggedInUser: null,
+      registeredAccounts: initialRegisteredAccounts,
+      currentUserData: null,
 
   login: (email: string, password: string) => {
     const state = get()
@@ -168,4 +173,33 @@ export const useAppStore = create<AppStore>((set, get) => ({
       },
     })
   },
-}))
+
+  loadWeeklyPreset: (items: string[]) => {
+    const state = get()
+    if (!state.currentUserData) return
+
+    const updatedOccasional = state.currentUserData.lists.occasional.filter((x) => !items.includes(x))
+    const updatedData = {
+      ...state.currentUserData,
+      lists: {
+        weekly: [...items],
+        occasional: updatedOccasional,
+      },
+    }
+
+    set({
+      currentUserData: updatedData,
+      registeredAccounts: {
+        ...state.registeredAccounts,
+        [state.loggedInUser!]: updatedData,
+      },
+    })
+  },
+}),
+
+    {
+      name: 'smartgrocer-app-storage',
+    }
+  )
+)
+

@@ -6,6 +6,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "test": "node --test tests/optimizer.test.mjs",
     "deploy:firebase": "npm run build && firebase deploy",
     "deploy:cloudflare": "npm run build && wrangler pages deploy dist"
   },

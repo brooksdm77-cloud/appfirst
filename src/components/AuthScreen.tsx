@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
 import { useAppStore } from '../store/appStore'
+import { SupermarketLogo } from './SupermarketLogo'
 
 export const AuthScreen: React.FC = () => {
+
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('student@uni.ac.nz')
   const [password, setPassword] = useState('password123')
@@ -23,7 +25,6 @@ export const AuthScreen: React.FC = () => {
 
     if (login(email, password)) {
       setSuccess('Access Granted! Loading your profile...')
-      setTimeout(() => window.location.reload(), 500)
     } else {
       setError('Invalid email or password')
     }
@@ -56,11 +57,17 @@ export const AuthScreen: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md card shadow-xl animate-slide-in">
-        <div className="mb-8 text-center">
+        <div className="mb-6 text-center">
           <h1 className="text-4xl mb-2">🛒</h1>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Smart Grocer NZ</h2>
-          <p className="text-gray-600">Automated Price & Split-Trip Optimizer</p>
+          <h2 className="text-3xl font-black text-gray-900 mb-1">SmartGrocer NZ</h2>
+          <p className="text-gray-500 text-sm">Automated Supermarket Price & Split-Trip Optimizer</p>
+          <div className="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-gray-100">
+            <SupermarketLogo store="Woolworths" size="xs" />
+            <SupermarketLogo store="PAKnSAVE" size="xs" />
+            <SupermarketLogo store="NewWorld" size="xs" />
+          </div>
         </div>
+
 
         {error && (
           <div className="alert alert-error mb-4">
