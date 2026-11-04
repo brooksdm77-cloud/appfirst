@@ -35,6 +35,9 @@ export const RecommendationsPanel: React.FC = () => {
 
   const discountedItems = getDiscountedItems(currentUserData.lists.occasional)
   const hasDeals = discountedItems.length > 0
+  const unpricedOccasionalItems = currentUserData.lists.occasional.filter(
+    (item) => !NZ_SUPERMARKET_CATALOGUE[item]?.prices
+  )
 
   const handleInjectItem = (itemName: string) => {
     if (!activeCart.includes(itemName)) {
@@ -57,9 +60,14 @@ export const RecommendationsPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-        💡 Live Recommendation Insights
-      </h2>
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          💡 Shopping Recommendations
+        </h2>
+        <p className="mt-1 text-sm text-amber-800">
+          Comparisons currently use sample prices, not live supermarket prices.
+        </p>
+      </div>
 
       {/* Deal Alerts Section */}
       <div className="card">
@@ -69,7 +77,9 @@ export const RecommendationsPanel: React.FC = () => {
 
         {!hasDeals ? (
           <div className="alert alert-info">
-            No items within your Occasional List met the deep-discount algorithm threshold this week.
+            {unpricedOccasionalItems.length > 0
+              ? `Price data is unavailable for ${unpricedOccasionalItems.length} occasional-list item(s), so their discounts cannot be checked.`
+              : 'No items within your Occasional List met the deep-discount algorithm threshold using the sample prices.'}
           </div>
         ) : (
           <div className="space-y-3">
@@ -135,6 +145,9 @@ export const RecommendationsPanel: React.FC = () => {
             <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
               <p className="text-sm text-gray-700">
                 <span className="font-semibold">Active Running Basket:</span> {activeCart.length} distinct product items
+                {optimizationResult.pricedItemCount > 0 && (
+                  <> ({optimizationResult.pricedItemCount} included in sample-price comparison)</>
+                )}
               </p>
             </div>
             <OptimizationResults result={optimizationResult} itemCount={activeCart.length} />
@@ -178,5 +191,4 @@ export const RecommendationsPanel: React.FC = () => {
     </div>
   )
 }
-
 

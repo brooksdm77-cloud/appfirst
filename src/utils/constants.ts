@@ -1,6 +1,7 @@
 import { Product } from '../types'
+import mockProducts from '../../mock-data/products.json'
 
-export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
+const coreCatalogue: Record<string, Product> = {
   // --- Dairy & Eggs ---
   "Anchor Blue Milk 2L": {
     name: "Anchor Blue Milk 2L",
@@ -12,6 +13,7 @@ export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
       NewWorld: 4.25,
     },
     historicAvg: 4.45,
+    priceStatus: 'sample',
   },
   "Mainland Tasty Cheese 700g": {
     name: "Mainland Tasty Cheese 700g",
@@ -23,6 +25,7 @@ export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
       NewWorld: 12.99,
     },
     historicAvg: 13.50,
+    priceStatus: 'sample',
   },
   "Farmer Brown Free Range Eggs 12pk": {
     name: "Farmer Brown Free Range Eggs 12pk",
@@ -34,6 +37,7 @@ export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
       NewWorld: 7.99, // TOP SPECIAL TODAY AT NEW WORLD
     },
     historicAvg: 9.80,
+    priceStatus: 'sample',
   },
   "Tararua Salted Butter 500g": {
     name: "Tararua Salted Butter 500g",
@@ -45,6 +49,7 @@ export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
       NewWorld: 6.49,
     },
     historicAvg: 6.80,
+    priceStatus: 'sample',
   },
 
   // --- Bakery ---
@@ -58,6 +63,7 @@ export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
       NewWorld: 3.40,
     },
     historicAvg: 3.35,
+    priceStatus: 'sample',
   },
   "Quality Bakers English Muffins 6pk": {
     name: "Quality Bakers English Muffins 6pk",
@@ -69,6 +75,7 @@ export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
       NewWorld: 4.10,
     },
     historicAvg: 4.25,
+    priceStatus: 'sample',
   },
 
   // --- Fresh Produce ---
@@ -82,6 +89,7 @@ export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
       NewWorld: 3.89,
     },
     historicAvg: 3.95,
+    priceStatus: 'sample',
   },
   "Royal Gala Apples 1.5kg": {
     name: "Royal Gala Apples 1.5kg",
@@ -93,6 +101,7 @@ export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
       NewWorld: 4.80,
     },
     historicAvg: 4.99,
+    priceStatus: 'sample',
   },
   "Broccoli Fresh Crown": {
     name: "Broccoli Fresh Crown",
@@ -104,6 +113,7 @@ export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
       NewWorld: 2.29,
     },
     historicAvg: 2.60,
+    priceStatus: 'sample',
   },
   "Agria Potatoes 2kg Bag": {
     name: "Agria Potatoes 2kg Bag",
@@ -115,6 +125,7 @@ export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
       NewWorld: 5.99,
     },
     historicAvg: 6.40,
+    priceStatus: 'sample',
   },
 
   // --- Meat & Poultry ---
@@ -128,6 +139,7 @@ export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
       NewWorld: 14.80,
     },
     historicAvg: 15.20,
+    priceStatus: 'sample',
   },
   "Prime Beef Mince 1kg": {
     name: "Prime Beef Mince 1kg",
@@ -139,6 +151,7 @@ export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
       NewWorld: 16.90,
     },
     historicAvg: 17.80,
+    priceStatus: 'sample',
   },
 
   // --- Pantry & Breakfast ---
@@ -152,6 +165,7 @@ export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
       NewWorld: 6.20,
     },
     historicAvg: 6.50,
+    priceStatus: 'sample',
   },
   "Nescafe Instant Coffee 200g": {
     name: "Nescafe Instant Coffee 200g",
@@ -163,6 +177,7 @@ export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
       NewWorld: 9.99,
     },
     historicAvg: 10.20,
+    priceStatus: 'sample',
   },
   "Watties Baked Beans 420g": {
     name: "Watties Baked Beans 420g",
@@ -174,6 +189,7 @@ export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
       NewWorld: 2.20,
     },
     historicAvg: 2.50,
+    priceStatus: 'sample',
   },
   "Watties Tomato Sauce 560g": {
     name: "Watties Tomato Sauce 560g",
@@ -185,6 +201,7 @@ export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
       NewWorld: 3.70,
     },
     historicAvg: 3.90,
+    priceStatus: 'sample',
   },
 
   // --- Treats & Household ---
@@ -198,6 +215,7 @@ export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
       NewWorld: 6.50,
     },
     historicAvg: 6.70,
+    priceStatus: 'sample',
   },
   "Purex Soft Toilet Tissue 12pk": {
     name: "Purex Soft Toilet Tissue 12pk",
@@ -209,7 +227,62 @@ export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
       NewWorld: 9.20,
     },
     historicAvg: 9.99,
+    priceStatus: 'sample',
   },
+}
+
+const existingProductNames = new Set(Object.keys(coreCatalogue))
+const catalogProductMetadata = mockProducts
+  .filter((product) => !existingProductNames.has(product.name))
+  .map(({ name, category, emoji }) => ({ name, category, emoji }))
+
+const additionalPopularProducts = [
+  { name: "Freya's Wholemeal Bread 700g", category: 'Bakery', emoji: '🍞' },
+  { name: 'Meadow Fresh Standard Milk 2L', category: 'Dairy & Eggs', emoji: '🥛' },
+  { name: 'Free Range Eggs 6pk', category: 'Dairy & Eggs', emoji: '🥚' },
+  { name: 'Mainland Colby Cheese 500g', category: 'Dairy & Eggs', emoji: '🧀' },
+  { name: 'Greek Yoghurt Plain 1kg', category: 'Dairy & Eggs', emoji: '🥣' },
+  { name: 'Granny Smith Apples 1kg', category: 'Fresh Produce', emoji: '🍏' },
+  { name: 'Navel Oranges 1kg', category: 'Fresh Produce', emoji: '🍊' },
+  { name: 'Cucumber Each', category: 'Fresh Produce', emoji: '🥒' },
+  { name: 'Baby Spinach 120g', category: 'Fresh Produce', emoji: '🥬' },
+  { name: 'Beef Mince 500g', category: 'Meat & Poultry', emoji: '🥩' },
+  { name: 'Chicken Thigh Fillets 1kg', category: 'Meat & Poultry', emoji: '🍗' },
+  { name: 'Pams Rolled Oats 1kg', category: 'Pantry & Breakfast', emoji: '🥣' },
+  { name: 'Pams Long Grain Rice 1kg', category: 'Pantry & Breakfast', emoji: '🍚' },
+]
+
+export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
+  ...coreCatalogue,
+  ...Object.fromEntries(
+    [...catalogProductMetadata, ...additionalPopularProducts].map(({ name, category, emoji }) => [
+      name,
+      {
+        name,
+        category,
+        emoji,
+        prices: null,
+        historicAvg: null,
+        priceStatus: 'unavailable' as const,
+      },
+    ])
+  ),
+}
+
+export const GENERIC_PRODUCT_PREFERENCES = ['milk', 'bread'] as const
+
+export const getProductPreferenceKeys = (productName: string): string[] => {
+  const product = NZ_SUPERMARKET_CATALOGUE[productName]
+  if (!product) return []
+
+  const preferences: string[] = []
+  if (product.category === 'Dairy & Eggs' && /\bmilk\b/i.test(product.name)) {
+    preferences.push('milk')
+  }
+  if (product.category === 'Bakery' && /\bbread\b/i.test(product.name)) {
+    preferences.push('bread')
+  }
+  return preferences
 }
 
 export const STORE_NAMES = ["Woolworths", "PAKnSAVE", "NewWorld"] as const
@@ -272,7 +345,27 @@ export const GENERIC_WEEKLY_ESSENTIALS: string[] = [
 ]
 
 export const DISCOUNT_THRESHOLD = 0.88 // 12% discount
+
+export const NZ_REGIONS = [
+  'Auckland',
+  'Wellington',
+  'Canterbury / Christchurch',
+  'Waikato / Hamilton',
+  'Bay of Plenty / Tauranga',
+  'Otago / Dunedin',
+  'Manawatū-Whanganui',
+  'Hawke\'s Bay',
+  'Taranaki',
+  'Nelson / Tasman',
+  'Northland',
+  'Southland / Invercargill',
+] as const
+
 export const DEMO_ACCOUNT = {
-  email: "student@uni.ac.nz",
-  password: "password123",
+  email: 'student@uni.ac.nz',
+  password: 'password123',
+  fullName: 'Kiwi Shopper',
+  phone: '021 555 7890',
+  region: 'Wellington',
+  preferredSupermarket: 'PAKnSAVE' as const,
 }

@@ -11,6 +11,8 @@ export function processBasketOptimization(itemsList: string[]): OptimizationResu
       bestSingleTotal: 0,
       optimalSplitTotal: 0,
       savings: 0,
+      pricedItemCount: 0,
+      unpricedItems: [],
       splitBreakdown: {
         Woolworths: [],
         PAKnSAVE: [],
@@ -38,32 +40,61 @@ export function processBasketOptimization(itemsList: string[]): OptimizationResu
   }
 
   let optimalSplitTotal = 0
+  const unpricedItems: string[] = []
+  let pricedItemCount = 0
+  const stores: Supermarket[] = ['Woolworths', 'PAKnSAVE', 'NewWorld']
 
   // Process each item
   for (const itemName of itemsList) {
     const product = NZ_SUPERMARKET_CATALOGUE[itemName]
-    if (!product) continue
+    if (
+      !product ||
+      !product.prices ||
+      product.priceStatus === 'unavailable'
+    ) {
+      unpricedItems.push(itemName)
+      continue
+    }
+    const prices = product.prices
+    if (!stores.every((store) => Number.isFinite(prices[store]) && prices[store] > 0)) {
+      unpricedItems.push(itemName)
+      continue
+    }
+    pricedItemCount += 1
 
     // Add to store totals
-    storeTotals.Woolworths += product.prices.Woolworths
-    storeTotals.PAKnSAVE += product.prices.PAKnSAVE
-    storeTotals.NewWorld += product.prices.NewWorld
+    storeTotals.Woolworths += prices.Woolworths
+    storeTotals.PAKnSAVE += prices.PAKnSAVE
+    storeTotals.NewWorld += prices.NewWorld
 
     // Find cheapest store for this item
     let cheapestStore: Supermarket = 'Woolworths'
-    let lowestPrice = product.prices.Woolworths
+    let lowestPrice = prices.Woolworths
 
     const otherStores: Supermarket[] = ['PAKnSAVE', 'NewWorld']
     for (const store of otherStores) {
-      if (product.prices[store] < lowestPrice) {
+      if (prices[store] < lowestPrice) {
         cheapestStore = store
-        lowestPrice = product.prices[store]
+        lowestPrice = prices[store]
       }
     }
 
     // Add to split trip breakdown
     splitBreakdown[cheapestStore].push(itemName)
     optimalSplitTotal += lowestPrice
+  }
+
+  if (pricedItemCount === 0) {
+    return {
+      storeTotals,
+      bestSingleStore: '',
+      bestSingleTotal: 0,
+      optimalSplitTotal: 0,
+      savings: 0,
+      pricedItemCount,
+      unpricedItems,
+      splitBreakdown,
+    }
   }
 
   // Find best single store
@@ -87,6 +118,8 @@ export function processBasketOptimization(itemsList: string[]): OptimizationResu
     bestSingleTotal,
     optimalSplitTotal,
     savings,
+    pricedItemCount,
+    unpricedItems,
     splitBreakdown,
   }
 }
@@ -98,7 +131,11 @@ export function getDiscountedItems(
   return items
     .map((itemName) => {
       const product = NZ_SUPERMARKET_CATALOGUE[itemName]
-      if (!product) return null
+      if (
+        !product?.prices ||
+        product.priceStatus === 'unavailable' ||
+        product.historicAvg === null
+      ) return null
 
       let cheapestStore: Supermarket = 'Woolworths'
       let lowestPrice = product.prices.Woolworths
@@ -129,5 +166,3 @@ export function getDiscountedItems(
 export function formatCurrency(value: number): string {
   return `$${value.toFixed(2)}`
 }
-
-

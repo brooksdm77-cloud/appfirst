@@ -19,7 +19,13 @@ export const TopSpecialsBanner: React.FC = () => {
   const genericBenchmark = processBasketOptimization(GENERIC_WEEKLY_ESSENTIALS)
 
   // Compute top deals of the day (items with >15% discount vs historic baseline)
-  const allDeals = Object.values(NZ_SUPERMARKET_CATALOGUE).map((product) => {
+  const allDeals = Object.values(NZ_SUPERMARKET_CATALOGUE).flatMap((product) => {
+    if (
+      !product.prices ||
+      product.priceStatus === 'unavailable' ||
+      product.historicAvg === null
+    ) return []
+
     let cheapestStore: 'Woolworths' | 'PAKnSAVE' | 'NewWorld' = 'Woolworths'
     let lowestPrice = product.prices.Woolworths
 
@@ -34,13 +40,14 @@ export const TopSpecialsBanner: React.FC = () => {
     const discountPct = ((1 - lowestPrice / product.historicAvg) * 100)
     const savings = product.historicAvg - lowestPrice
 
-    return {
+    return [{
       product,
+      historicAvg: product.historicAvg,
       store: cheapestStore,
       lowestPrice,
       savings,
       discountPct: parseFloat(discountPct.toFixed(1)),
-    }
+    }]
   })
 
   // Sort by highest discount percentage and take top 5
@@ -49,25 +56,38 @@ export const TopSpecialsBanner: React.FC = () => {
     .sort((a, b) => b.discountPct - a.discountPct)
     .slice(0, 5)
 
-  const handleLoadGenericWeekly = () => {
-    loadWeeklyPreset(GENERIC_WEEKLY_ESSENTIALS)
-    setNotification('✓ Loaded 11 Kiwi Family Essentials into your Weekly List!')
+  const handleLoadGenericWeekly = async () => {
+    try {
+      await loadWeeklyPreset(GENERIC_WEEKLY_ESSENTIALS)
+      setNotification('✓ Loaded 11 Kiwi Family Essentials into your Weekly List!')
+    } catch (error) {
+      setNotification(error instanceof Error ? `Could not save list: ${error.message}` : 'Could not save list.')
+    }
     setTimeout(() => setNotification(null), 4000)
   }
 
-  const handleAddSpecial = (itemName: string) => {
-    const success = addItemToWeekly(itemName)
-    if (success) {
-      setNotification(`✓ Added ${itemName} to Weekly List`)
-    } else {
-      addItemToOccasional(itemName)
-      setNotification(`✓ Added ${itemName} to Occasional List`)
+  const handleAddSpecial = async (itemName: string) => {
+    try {
+      const addedWeekly = await addItemToWeekly(itemName)
+      const added = addedWeekly || await addItemToOccasional(itemName)
+      setNotification(
+        added
+          ? `✓ Added ${itemName} to ${addedWeekly ? 'Weekly' : 'Occasional'} List`
+          : `${itemName} is already in your lists.`
+      )
+    } catch (error) {
+      setNotification(error instanceof Error ? `Could not save item: ${error.message}` : 'Could not save item.')
     }
     setTimeout(() => setNotification(null), 3000)
   }
 
   return (
     <div className="space-y-6 mb-8">
+      <div className="alert alert-warning">
+        Prices in this demo are sample values, not current supermarket prices. Products without verified prices are
+        excluded from comparisons and specials.
+      </div>
+
       {/* Toast Notification */}
       {notification && (
         <div className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-slide-in border border-gray-700">
@@ -90,7 +110,7 @@ export const TopSpecialsBanner: React.FC = () => {
               Best Price for an Average Weekly Shop
             </h2>
             <p className="text-gray-300 text-sm mt-1 max-w-xl">
-              Real-time basket total for <span className="text-white font-semibold">11 essential everyday items</span> (Milk, Bread, Eggs, Cheese, Bananas, Chicken, Butter, Weet-Bix, Apples, Broccoli & Baked Beans).
+              Example basket for <span className="text-white font-semibold">11 essential everyday items</span> (Milk, Bread, Eggs, Cheese, Bananas, Chicken, Butter, Weet-Bix, Apples, Broccoli & Baked Beans).
             </p>
           </div>
 
@@ -167,14 +187,14 @@ export const TopSpecialsBanner: React.FC = () => {
           <div>
             <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <span>🔥</span>
-              <span>Top Specials of the Day</span>
+              <span>Example Discounts (Sample Data)</span>
             </h3>
             <p className="text-xs text-gray-500 mt-0.5">
-              Deepest discounts across NZ supermarkets compared to historical baselines
+              Illustrative discounts compared to sample historical baselines
             </p>
           </div>
           <span className="text-xs bg-amber-100 text-amber-800 font-semibold px-2.5 py-1 rounded-full border border-amber-200">
-            Updated Today
+            Sample Data
           </span>
         </div>
 
@@ -212,7 +232,7 @@ export const TopSpecialsBanner: React.FC = () => {
                         {formatCurrency(deal.lowestPrice)}
                       </span>
                       <span className="text-xs text-gray-400 line-through ml-1.5">
-                        {formatCurrency(deal.product.historicAvg)}
+                        {formatCurrency(deal.historicAvg)}
                       </span>
                     </div>
                     <span className="text-[11px] font-semibold text-emerald-600">
@@ -240,4 +260,3 @@ export const TopSpecialsBanner: React.FC = () => {
     </div>
   )
 }
-

@@ -1,6 +1,11 @@
 import React, { useState } from 'react'
 import { useAppStore } from '../store/appStore'
-import { NZ_SUPERMARKET_CATALOGUE } from '../utils/constants'
+import {
+  GENERIC_PRODUCT_PREFERENCES,
+  NZ_SUPERMARKET_CATALOGUE,
+} from '../utils/constants'
+import { VoiceCommandPanel } from './VoiceCommandPanel'
+import { ShoppingListPhotoImport } from './ShoppingListPhotoImport'
 
 export const ShoppingListsPanel: React.FC = () => {
   const currentUserData = useAppStore((state) => state.currentUserData)
@@ -17,27 +22,40 @@ export const ShoppingListsPanel: React.FC = () => {
 
   const productNames = Object.keys(NZ_SUPERMARKET_CATALOGUE)
 
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     if (!selectedProduct) return
 
     setAddMessage(null)
 
-    const success =
-      frequency === 'weekly'
-        ? addItemToWeekly(selectedProduct)
-        : addItemToOccasional(selectedProduct)
+    try {
+      const success =
+        frequency === 'weekly'
+          ? await addItemToWeekly(selectedProduct)
+          : await addItemToOccasional(selectedProduct)
 
-    if (success) {
-      setAddMessage({
-        type: 'success',
-        text: `✓ Added to ${frequency} list`,
-      })
-      setSelectedProduct('')
-      setTimeout(() => setAddMessage(null), 3000)
-    } else {
+      if (success) {
+        setAddMessage({ type: 'success', text: `✓ Added to ${frequency} list` })
+        setSelectedProduct('')
+        setTimeout(() => setAddMessage(null), 3000)
+      } else {
+        setAddMessage({ type: 'error', text: '⚠️ Item already in a list' })
+      }
+    } catch (error) {
       setAddMessage({
         type: 'error',
-        text: '⚠️ Item already in a list',
+        text: error instanceof Error ? `Could not save item: ${error.message}` : 'Could not save item.',
+      })
+    }
+  }
+
+  const handleRemoveItem = async (item: string, list: 'weekly' | 'occasional') => {
+    try {
+      if (list === 'weekly') await removeFromWeekly(item)
+      else await removeFromOccasional(item)
+    } catch (error) {
+      setAddMessage({
+        type: 'error',
+        text: error instanceof Error ? `Could not save change: ${error.message}` : 'Could not save change.',
       })
     }
   }
@@ -64,10 +82,15 @@ export const ShoppingListsPanel: React.FC = () => {
                   <div key={item} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-100">
                     <span className="text-gray-900 font-medium flex items-center gap-2">
                       <span className="text-xl">{prod?.emoji || '🍏'}</span>
-                      <span>{item}</span>
+                      <span>
+                        {item}
+                        <span className="ml-2 text-xs font-normal text-amber-700">
+                          {prod?.priceStatus === 'sample' ? 'Sample prices' : 'Price unavailable'}
+                        </span>
+                      </span>
                     </span>
                     <button
-                      onClick={() => removeFromWeekly(item)}
+                      onClick={() => void handleRemoveItem(item, 'weekly')}
                       className="btn-danger text-xs px-2.5 py-1"
                     >
                       Remove
@@ -94,10 +117,18 @@ export const ShoppingListsPanel: React.FC = () => {
                   <div key={item} className="flex items-center justify-between bg-yellow-50/60 p-3 rounded-lg border border-yellow-200">
                     <span className="text-gray-900 font-medium flex items-center gap-2">
                       <span className="text-xl">{prod?.emoji || '📦'}</span>
-                      <span>{item} <span className="text-xs text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded-full ml-1 font-semibold">Monitored</span></span>
+                      <span>
+                        {item}
+                        <span className="ml-2 text-xs font-normal text-amber-700">
+                          {prod?.priceStatus === 'sample' ? 'Sample prices' : 'Price unavailable'}
+                        </span>
+                        <span className="text-xs text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded-full ml-1 font-semibold">
+                          Monitored
+                        </span>
+                      </span>
                     </span>
                     <button
-                      onClick={() => removeFromOccasional(item)}
+                      onClick={() => void handleRemoveItem(item, 'occasional')}
                       className="btn-danger text-xs px-2.5 py-1"
                     >
                       Remove
@@ -109,6 +140,11 @@ export const ShoppingListsPanel: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Voice Assistant Section */}
+      <VoiceCommandPanel />
+
+      <ShoppingListPhotoImport />
 
       {/* Add Items Section */}
       <div className="card bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
@@ -133,11 +169,19 @@ export const ShoppingListsPanel: React.FC = () => {
               className="input-field"
             >
               <option value="">-- Choose Item ({productNames.length} Products Available) --</option>
+              {GENERIC_PRODUCT_PREFERENCES.filter(
+                (preference) => currentUserData.productPreferences?.[preference]
+              ).map((preference) => (
+                <option key={preference} value={preference}>
+                  {preference[0].toUpperCase() + preference.slice(1)} (usual: {currentUserData.productPreferences?.[preference]})
+                </option>
+              ))}
               {productNames.map((name) => {
                 const prod = NZ_SUPERMARKET_CATALOGUE[name]
                 return (
                   <option key={name} value={name}>
-                    {prod?.emoji || '📦'} {name} ({prod?.category})
+                    {prod?.emoji || '📦'} {name} ({prod?.category}) —{' '}
+                    {prod?.priceStatus === 'unavailable' ? 'price unavailable' : 'sample prices'}
                   </option>
                 )
               })}

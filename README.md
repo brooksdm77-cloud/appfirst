@@ -4,9 +4,10 @@ A modern web application for comparing prices across NZ supermarkets and optimiz
 
 ## ✨ Features
 
-- **🔐 Secure Authentication** - Sign in/registration with session persistence
+- **🔐 Customer Accounts** - Firebase email/password authentication, email verification, and password reset
+- **☁️ Cloud Profiles** - Shopping lists and receipt preferences stored per-user in Firestore
 - **📝 Shopping Lists** - Organize items into weekly and occasional categories
-- **💰 Price Comparison** - Real-time price comparison across Woolworths, PAK'nSAVE, and New World
+- **💰 Price Comparison** - Sample-price comparison across Woolworths, PAK'nSAVE, and New World; not live retailer pricing
 - **🎯 Smart Optimization** - Automatic single-store vs. multi-store trip analysis
 - **✨ Deal Detection** - Automated alerts for items matching discount thresholds
 - **📊 Detailed Analytics** - Visualize potential savings and store breakdowns
@@ -22,7 +23,7 @@ A modern web application for comparing prices across NZ supermarkets and optimiz
 
 ## 📋 Prerequisites
 
-- Node.js 16+ and npm (or yarn/pnpm)
+- Node.js 20+ and npm (or yarn/pnpm)
 - Firebase CLI (for Firebase deployment)
 - Wrangler CLI (for Cloudflare deployment)
 
@@ -39,14 +40,27 @@ yarn install
 pnpm install
 ```
 
-### 2. Development
+### 2. Configure Firebase
+
+1. Open the `smart-shopper-75253` project in the [Firebase Console](https://console.firebase.google.com/).
+2. In **Authentication → Sign-in method**, enable **Email/Password**.
+3. Create a **Cloud Firestore** database.
+4. In **Project settings → General → Your apps**, register a Web app if one is not already registered.
+5. Copy `.env.example` to `.env.local` and fill in `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, and `VITE_FIREBASE_APP_ID` from the Web app config. These values identify the browser app; never put Firebase Admin credentials in frontend environment variables.
+6. Publish the owner-only profile rules: `npx firebase-tools deploy --only firestore:rules --project smart-shopper-75253` (or `firebase deploy --only firestore:rules` if the Firebase CLI is installed globally).
+
+The app will not offer sign-in or sign-up until all required Firebase web config values are present. New accounts must verify their email before signing in. Passwords are managed by Firebase Authentication and are not stored in the app profile. Profile documents live at `users/{uid}` and the included Firestore rules restrict access to that signed-in user.
+
+The old local demo profile is not a Firebase account. When the updated app first loads, its legacy browser data is copied to a temporary profile cache without passwords and the old storage entry is removed; matching profile data is moved to Firestore after the user registers and verifies the same email address. This migration applies only in that browser.
+
+### 3. Development
 
 ```bash
 # Start dev server (opens at http://localhost:3000)
 npm run dev
 ```
 
-### 3. Build
+### 4. Build
 
 ```bash
 # Create production build
@@ -72,9 +86,10 @@ npm run deploy:firebase
 ```
 
 **First time setup:**
-1. Create Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
-2. Update project ID in `.firebaserc`
-3. Enable Firebase Hosting
+1. Complete Firebase configuration above.
+2. Confirm the project ID in `.firebaserc`.
+3. Set the same `VITE_FIREBASE_*` values as deployment environment variables so the production build can connect to Firebase.
+4. Deploy Hosting and Firestore rules with `npm run deploy:firebase`.
 
 ### Cloudflare Pages
 
@@ -112,14 +127,14 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20
       - run: npm ci && npm run build
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           channelId: live
-          projectId: smartgrocer-nz
+          projectId: smart-shopper-75253
 ```
 
 ## 📁 Project Structure
@@ -145,13 +160,6 @@ src/
 public/                # Static assets
 dist/                  # Production build output
 ```
-
-## 🔐 Demo Account
-
-The app comes with a demo account for testing:
-
-- **Email**: `student@uni.ac.nz`
-- **Password**: `password123`
 
 ## 🎨 Customization
 
@@ -194,6 +202,13 @@ Global styles in `src/index.css` use Tailwind CSS. Customize theme in `tailwind.
 - ✅ Production source maps disabled
 - ✅ CSS minification
 - ✅ Image optimization ready
+
+## 🛒 Product prices
+
+The product registry includes additional popular grocery items, but no prices are invented for those products.
+Items without prices remain available to add to shopping lists and are excluded from basket totals and deal
+recommendations until a permitted, verified price source is connected. Existing numeric prices are sample data,
+not current supermarket prices.
 
 ## 🧪 Testing (Optional)
 

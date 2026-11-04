@@ -9,12 +9,28 @@ interface OptimizationResultsProps {
 }
 
 export const OptimizationResults: React.FC<OptimizationResultsProps> = ({ result, itemCount }) => {
+  if (result.pricedItemCount === 0) {
+    return (
+      <div className="alert alert-info">
+        No price comparison is available because none of the {itemCount} basket items has prices for all three
+        supermarkets. Prices are not estimated.
+      </div>
+    )
+  }
+
   const percentageSavings = result.bestSingleTotal > 0 
     ? ((result.savings / result.bestSingleTotal) * 100).toFixed(1)
     : '0'
 
   return (
     <div className="space-y-6">
+      {result.unpricedItems.length > 0 && (
+        <div className="alert alert-warning">
+          {result.unpricedItems.length} item(s) are excluded because price data is unavailable. The totals below
+          include {result.pricedItemCount} of {itemCount} items and use sample prices only.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* One-Stop Option */}
         <div className="card bg-gradient-to-br from-blue-50 to-blue-100 border-blue-300">
@@ -28,7 +44,7 @@ export const OptimizationResults: React.FC<OptimizationResultsProps> = ({ result
             <div className="text-3xl font-extrabold text-gray-900">
               {formatCurrency(result.bestSingleTotal)}
             </div>
-            <p className="text-xs text-gray-600 mt-1">Total for {itemCount} items at one store</p>
+            <p className="text-xs text-gray-600 mt-1">Total for {result.pricedItemCount} priced items at one store</p>
           </div>
         </div>
 
@@ -59,7 +75,7 @@ export const OptimizationResults: React.FC<OptimizationResultsProps> = ({ result
               {formatCurrency(result.savings)}
             </div>
             <p className="text-xs text-gray-700 mt-1 font-medium">
-              Save {percentageSavings}% by splitting items across supermarkets
+              Estimated sample-price difference: {percentageSavings}% by splitting items across supermarkets
             </p>
           </div>
           <div className="text-5xl opacity-80">🎉</div>
@@ -122,5 +138,4 @@ export const OptimizationResults: React.FC<OptimizationResultsProps> = ({ result
     </div>
   )
 }
-
 

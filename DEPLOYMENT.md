@@ -4,14 +4,14 @@ This guide covers deploying SmartGrocer NZ to both Firebase Hosting and Cloudfla
 
 ## Prerequisites
 
-- Node.js 16+ installed
+- Node.js 20+ installed
 - GitHub account (optional but recommended for CI/CD)
 - Firebase account + project
 - Cloudflare account
 
 ## Option 1: Firebase Hosting (Recommended for Backend)
 
-Firebase is ideal if you plan to add backend features later (authentication, database, etc.).
+Firebase provides Hosting, customer authentication, and the user-profile database.
 
 ### Setup Steps
 
@@ -22,6 +22,9 @@ Firebase is ideal if you plan to add backend features later (authentication, dat
 3. Enter project name: `smartgrocer-nz`
 4. Enable Analytics (optional)
 5. Create project
+6. Enable **Email/Password** in **Authentication → Sign-in method**, create a **Cloud Firestore** database, and register a Web app in **Project settings → General**.
+
+Copy `.env.example` to `.env.local` and enter the Web app's `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, and `VITE_FIREBASE_APP_ID`. Keep `VITE_FIREBASE_PROJECT_ID` set to your Firebase project ID. These are client configuration values; never use Admin SDK credentials in the browser.
 
 #### 2. Install Firebase CLI
 
@@ -56,11 +59,12 @@ Replace `your-project-id` with your actual Firebase project ID.
 #### 5. Deploy
 
 ```bash
-npm run build
+firebase deploy --only firestore:rules
 npm run deploy:firebase
 ```
 
 Your app will be live at: `https://your-project-id.web.app`
+Set the same `VITE_FIREBASE_*` values as build environment variables in your deployment workflow before building.
 
 ---
 
@@ -93,7 +97,8 @@ git push -u origin main
 7. Configure build:
    - **Build command**: `npm run build`
    - **Build output directory**: `dist`
-   - **Node version**: 18
+   - **Node version**: 20
+   - Set `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, and `VITE_FIREBASE_APP_ID` as build environment variables.
 8. Click "Save and Deploy"
 
 #### 3. Custom Domain (Optional)
@@ -153,7 +158,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies

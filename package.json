@@ -2,27 +2,38 @@
   "name": "smartgrocer-nz",
   "version": "1.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "node --test tests/optimizer.test.mjs",
+    "mock-api": "node src/server/mockServer.mjs",
+    "scrape": "npx tsx scripts/scrape-prices.ts",
+    "test": "node --test tests/*.test.mjs",
     "deploy:firebase": "npm run build && firebase deploy",
     "deploy:cloudflare": "npm run build && wrangler pages deploy dist"
   },
   "dependencies": {
+    "firebase": "^11.10.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "tesseract.js": "^7.0.0",
     "zustand": "^4.4.1"
   },
+  "overrides": {
+    "@grpc/grpc-js": "^1.13.6"
+  },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^4.0.0",
     "autoprefixer": "^10.4.14",
     "postcss": "^8.4.24",
-    "tailwindcss": "^3.3.0",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.1.6",
-    "vite": "^4.4.0"
+    "vite": "^6.4.4"
   }
 }
