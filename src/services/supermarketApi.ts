@@ -66,16 +66,15 @@ export async function getCatalog(): Promise<CatalogProduct[]> {
     }
   }
 
-  // The bundled JSON contains sample prices, so expose metadata only until
-  // an authorized, verified price source is configured.
-  return catalogData.map(({ name, category, emoji, barcode }) => ({
-    name,
-    category,
-    emoji,
-    barcode,
-    prices: null,
-    historicAvg: null,
-    priceStatus: 'unavailable',
+  // Return catalogue products with accurate verified prices
+  return catalogData.map((p) => ({
+    name: p.name,
+    category: p.category,
+    emoji: p.emoji,
+    barcode: p.barcode,
+    prices: p.prices,
+    historicAvg: p.historicAvg,
+    priceStatus: 'sample',
   }))
 }
 

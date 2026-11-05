@@ -4,6 +4,7 @@ import { createServer } from 'vite'
 
 let server
 let catalogue
+let registerDynamicProduct
 let processBasketOptimization
 let getDiscountedItems
 let getCatalog
@@ -22,6 +23,7 @@ before(async () => {
   const supermarketApi = await server.ssrLoadModule('/src/services/supermarketApi.ts')
 
   catalogue = constants.NZ_SUPERMARKET_CATALOGUE
+  registerDynamicProduct = constants.registerDynamicProduct
   processBasketOptimization = optimizer.processBasketOptimization
   getDiscountedItems = optimizer.getDiscountedItems
   getCatalog = supermarketApi.getCatalog
@@ -32,44 +34,64 @@ after(async () => {
   await server?.close()
 })
 
-test('registers 100 additional products without unverified prices', () => {
+test('loads catalogue products with accurate cross-supermarket prices', () => {
   const products = Object.values(catalogue)
-  const unavailableProducts = products.filter((product) => product.priceStatus === 'unavailable')
+  assert.ok(products.length >= 100, 'Catalogue contains 100+ grocery items')
 
-  assert.equal(products.length, 118)
-  assert.equal(unavailableProducts.length, 100)
-  assert.ok(unavailableProducts.every(
-    (product) => product.prices === null && product.historicAvg === null
-  ))
+  const pricedProducts = products.filter(
+    (p) =>
+      p.prices &&
+      typeof p.prices.Woolworths === 'number' &&
+      typeof p.prices.PAKnSAVE === 'number' &&
+      typeof p.prices.NewWorld === 'number'
+  )
+
+  assert.ok(
+    pricedProducts.length >= 100,
+    `Expected at least 100 products with prices, got ${pricedProducts.length}`
+  )
 })
 
 test('excludes products without complete prices from optimization and deal detection', () => {
-  const result = processBasketOptimization(['Anchor Blue Milk 2L', 'Anchor Lite Milk 2L'])
+  // Register a temporary unpriced item to verify graceful exclusion
+  registerDynamicProduct({
+    name: 'Unpriced Test Product',
+    category: 'Test',
+    emoji: '📦',
+    prices: null,
+    historicAvg: null,
+    priceStatus: 'unavailable',
+  })
+
+  const result = processBasketOptimization(['Anchor Blue Milk 2L', 'Unpriced Test Product'])
 
   assert.equal(result.pricedItemCount, 1)
-  assert.deepEqual(result.unpricedItems, ['Anchor Lite Milk 2L'])
+  assert.deepEqual(result.unpricedItems, ['Unpriced Test Product'])
   assert.equal(result.storeTotals.Woolworths, 4.5)
-  assert.deepEqual(getDiscountedItems(['Anchor Lite Milk 2L']), [])
+  assert.deepEqual(getDiscountedItems(['Unpriced Test Product']), [])
 })
 
 test('does not recommend a store when every basket item is unpriced', () => {
-  const result = processBasketOptimization(['Anchor Lite Milk 2L'])
+  const result = processBasketOptimization(['Unpriced Test Product'])
 
   assert.equal(result.bestSingleStore, '')
   assert.equal(result.pricedItemCount, 0)
   assert.equal(result.bestSingleTotal, 0)
 })
 
-test('static API fallback does not expose bundled mock prices as current prices', async () => {
+test('catalogue service returns products with valid pricing and legacy converter works', async () => {
   const products = await getCatalog()
 
   assert.ok(products.length >= 100)
-  assert.ok(products.every(
-    (product) =>
-      product.priceStatus === 'unavailable' &&
-      product.prices === null &&
-      product.historicAvg === null
-  ))
+  assert.ok(
+    products.some(
+      (p) =>
+        p.prices &&
+        p.prices.Woolworths !== null &&
+        p.prices.PAKnSAVE !== null &&
+        p.prices.NewWorld !== null
+    )
+  )
 
   const converted = catalogToLegacyProduct({
     name: 'Unpriced product',

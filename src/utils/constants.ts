@@ -232,41 +232,28 @@ const coreCatalogue: Record<string, Product> = {
 }
 
 const existingProductNames = new Set(Object.keys(coreCatalogue))
-const catalogProductMetadata = mockProducts
+const mockCatalogueEntries: [string, Product][] = mockProducts
   .filter((product) => !existingProductNames.has(product.name))
-  .map(({ name, category, emoji }) => ({ name, category, emoji }))
-
-const additionalPopularProducts = [
-  { name: "Freya's Wholemeal Bread 700g", category: 'Bakery', emoji: '🍞' },
-  { name: 'Meadow Fresh Standard Milk 2L', category: 'Dairy & Eggs', emoji: '🥛' },
-  { name: 'Free Range Eggs 6pk', category: 'Dairy & Eggs', emoji: '🥚' },
-  { name: 'Mainland Colby Cheese 500g', category: 'Dairy & Eggs', emoji: '🧀' },
-  { name: 'Greek Yoghurt Plain 1kg', category: 'Dairy & Eggs', emoji: '🥣' },
-  { name: 'Granny Smith Apples 1kg', category: 'Fresh Produce', emoji: '🍏' },
-  { name: 'Navel Oranges 1kg', category: 'Fresh Produce', emoji: '🍊' },
-  { name: 'Cucumber Each', category: 'Fresh Produce', emoji: '🥒' },
-  { name: 'Baby Spinach 120g', category: 'Fresh Produce', emoji: '🥬' },
-  { name: 'Beef Mince 500g', category: 'Meat & Poultry', emoji: '🥩' },
-  { name: 'Chicken Thigh Fillets 1kg', category: 'Meat & Poultry', emoji: '🍗' },
-  { name: 'Pams Rolled Oats 1kg', category: 'Pantry & Breakfast', emoji: '🥣' },
-  { name: 'Pams Long Grain Rice 1kg', category: 'Pantry & Breakfast', emoji: '🍚' },
-]
+  .map((p) => [
+    p.name,
+    {
+      name: p.name,
+      category: p.category,
+      emoji: p.emoji,
+      prices: p.prices,
+      historicAvg: p.historicAvg,
+      priceStatus: 'sample' as const,
+    },
+  ])
 
 export const NZ_SUPERMARKET_CATALOGUE: Record<string, Product> = {
   ...coreCatalogue,
-  ...Object.fromEntries(
-    [...catalogProductMetadata, ...additionalPopularProducts].map(({ name, category, emoji }) => [
-      name,
-      {
-        name,
-        category,
-        emoji,
-        prices: null,
-        historicAvg: null,
-        priceStatus: 'unavailable' as const,
-      },
-    ])
-  ),
+  ...Object.fromEntries(mockCatalogueEntries),
+}
+
+export function registerDynamicProduct(product: Product): Product {
+  NZ_SUPERMARKET_CATALOGUE[product.name] = product
+  return product
 }
 
 export const GENERIC_PRODUCT_PREFERENCES = ['milk', 'bread'] as const
