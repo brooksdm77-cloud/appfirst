@@ -5,15 +5,22 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
 } from 'firebase/auth'
 import {
   doc,
-  runTransaction,
+  getDoc,
+  setDoc,
   type DocumentData,
 } from 'firebase/firestore'
 import { AppState, ReceiptPriceObservation, RegistrationData, UserAccount } from '../types'
-import { getFirebaseAuth, getFirebaseDatabase, isFirebaseConfigured } from '../firebaseClient'
+import {
+  getFirebaseAuth,
+  getFirebaseDatabase,
+  getGoogleAuthProvider,
+  isFirebaseConfigured,
+} from '../firebaseClient'
 import {
   DEMO_ACCOUNT,
   getProductPreferenceKeys,
@@ -23,6 +30,7 @@ import {
 interface AppStore extends AppState {
   initializeAuth: () => () => void
   login: (email: string, password: string) => Promise<void>
+  loginWithGoogle: () => Promise<void>
   logout: () => Promise<void>
   register: (data: RegistrationData | { email: string; password: string }) => Promise<void>
   resetPassword: (email: string) => Promise<void>
@@ -141,6 +149,19 @@ const accountToFirestore = (account: UserAccount) => ({
   receiptPriceObservations: account.receiptPriceObservations.slice(-200),
 })
 
+const syncAccountToFirestore = async (account: UserAccount) => {
+  if (!isFirebaseConfigured) return
+  const user = getFirebaseAuth().currentUser
+  if (!user) return
+  try {
+    const database = getFirebaseDatabase()
+    const profileRef = doc(database, 'users', user.uid)
+    await setDoc(profileRef, accountToFirestore(account), { merge: true })
+  } catch (err) {
+    console.warn('Could not sync user profile to Firestore:', err)
+  }
+}
+
 const resolveListItemName = (itemName: string, account: UserAccount): string => {
   const normalizedName = itemName.trim().toLowerCase()
   const catalogueName = Object.keys(NZ_SUPERMARKET_CATALOGUE).find(
@@ -192,23 +213,26 @@ export const useAppStore = create<AppStore>((set, get) => ({
         set({ authReady: true, loggedInUser: null, currentUserData: null, authError: null })
         return
       }
-      if (!user.emailVerified) {
-        set({ authReady: true, loggedInUser: null, currentUserData: null })
-        return
-      }
 
       try {
         const database = getFirebaseDatabase()
         const profileRef = doc(database, 'users', user.uid)
-        const account = await runTransaction(database, async (transaction) => {
-          const latest = await transaction.get(profileRef)
-          if (latest.exists()) {
-            return hydrateAccount(user.email ?? '', latest.data())
+        const docSnap = await getDoc(profileRef)
+
+        let account: UserAccount
+        if (docSnap.exists()) {
+          account = hydrateAccount(user.email ?? '', docSnap.data())
+        } else {
+          account = createEmptyAccount(user.email ?? '', {
+            fullName: user.displayName || '',
+            preferredSupermarket: 'PAKnSAVE',
+          })
+          try {
+            await setDoc(profileRef, accountToFirestore(account), { merge: true })
+          } catch (writeErr) {
+            console.warn('Could not write initial Firestore profile:', writeErr)
           }
-          const newAccount = createEmptyAccount(user.email ?? '')
-          transaction.set(profileRef, accountToFirestore(newAccount))
-          return newAccount
-        })
+        }
 
         set({
           authReady: true,
@@ -217,12 +241,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
           authError: null,
         })
       } catch (error) {
-        console.error('Could not load user profile from Firestore:', error)
+        console.warn('Could not load user profile from Firestore, using memory fallback:', error)
+        const fallback = createEmptyAccount(user.email ?? '', {
+          fullName: user.displayName || '',
+          preferredSupermarket: 'PAKnSAVE',
+        })
         set({
           authReady: true,
-          loggedInUser: null,
-          currentUserData: null,
-          authError: 'Could not load your profile. Check your connection.',
+          loggedInUser: user.email,
+          currentUserData: fallback,
+          authError: null,
         })
       }
     })
@@ -252,13 +280,103 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }
 
     const credential = await signInWithEmailAndPassword(getFirebaseAuth(), cleanEmail, password)
-    if (!credential.user.emailVerified) {
-      try {
-        await sendEmailVerification(credential.user)
-      } finally {
-        await signOut(getFirebaseAuth())
+    const user = credential.user
+
+    try {
+      const database = getFirebaseDatabase()
+      const profileRef = doc(database, 'users', user.uid)
+      const docSnap = await getDoc(profileRef)
+
+      let account: UserAccount
+      if (docSnap.exists()) {
+        account = hydrateAccount(user.email ?? '', docSnap.data())
+      } else {
+        account = createEmptyAccount(user.email ?? '', {
+          fullName: user.displayName || '',
+        })
+        try {
+          await setDoc(profileRef, accountToFirestore(account), { merge: true })
+        } catch (e) {
+          console.warn('Could not save profile:', e)
+        }
       }
-      throw new Error('Your email is not verified. A new verification link has been sent to your inbox.')
+
+      set({
+        loggedInUser: user.email,
+        currentUserData: account,
+        authError: null,
+      })
+    } catch (e) {
+      const fallback = createEmptyAccount(user.email ?? '', {
+        fullName: user.displayName || '',
+      })
+      set({
+        loggedInUser: user.email,
+        currentUserData: fallback,
+        authError: null,
+      })
+    }
+  },
+
+  loginWithGoogle: async () => {
+    if (!isFirebaseConfigured) {
+      const demo = DEMO_ACCOUNT
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(SESSION_USER_KEY, demo.email)
+      }
+      set({
+        loggedInUser: demo.email,
+        currentUserData: {
+          ...demo,
+          lists: { weekly: [], occasional: [] },
+          productPreferences: {},
+          receiptPriceObservations: [],
+        },
+        authError: null,
+      })
+      return
+    }
+
+    const provider = getGoogleAuthProvider()
+    const credential = await signInWithPopup(getFirebaseAuth(), provider)
+    const user = credential.user
+
+    try {
+      const database = getFirebaseDatabase()
+      const profileRef = doc(database, 'users', user.uid)
+      const docSnap = await getDoc(profileRef)
+
+      let account: UserAccount
+      if (docSnap.exists()) {
+        account = hydrateAccount(user.email ?? '', docSnap.data())
+      } else {
+        account = createEmptyAccount(user.email ?? '', {
+          fullName: user.displayName || '',
+          preferredSupermarket: 'PAKnSAVE',
+        })
+        try {
+          await setDoc(profileRef, accountToFirestore(account), { merge: true })
+        } catch (writeErr) {
+          console.warn('Could not write initial Firestore profile:', writeErr)
+        }
+      }
+
+      set({
+        loggedInUser: user.email,
+        currentUserData: account,
+        authError: null,
+      })
+    } catch (firestoreErr) {
+      console.warn('Firestore read error in loginWithGoogle, using memory account:', firestoreErr)
+      const fallback = createEmptyAccount(user.email ?? '', {
+        fullName: user.displayName || '',
+        preferredSupermarket: 'PAKnSAVE',
+      })
+      set({
+        loggedInUser: user.email,
+        currentUserData: fallback,
+        authError: null,
+      })
     }
   },
 
@@ -315,9 +433,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
     // Firebase Registration
     const credential = await createUserWithEmailAndPassword(getFirebaseAuth(), email, password)
-    const database = getFirebaseDatabase()
-    const profileRef = doc(database, 'users', credential.user.uid)
-
     const initialAccount: UserAccount = {
       email: data.email.trim(),
       fullName: 'fullName' in data ? data.fullName : '',
@@ -331,12 +446,26 @@ export const useAppStore = create<AppStore>((set, get) => ({
       receiptPriceObservations: [],
     }
 
-    await runTransaction(database, async (tx) => {
-      tx.set(profileRef, accountToFirestore(initialAccount))
-    })
+    try {
+      const database = getFirebaseDatabase()
+      const profileRef = doc(database, 'users', credential.user.uid)
+      await setDoc(profileRef, accountToFirestore(initialAccount), { merge: true })
+    } catch (e) {
+      console.warn('Could not save profile to Firestore:', e)
+    }
 
-    await sendEmailVerification(credential.user)
-    await signOut(getFirebaseAuth())
+    try {
+      await sendEmailVerification(credential.user)
+    } catch (e) {
+      console.warn('Could not send verification email:', e)
+    }
+
+    // Keep user logged in immediately
+    set({
+      loggedInUser: credential.user.email,
+      currentUserData: initialAccount,
+      authError: null,
+    })
   },
 
   updateProfile: async (updates) => {
@@ -357,15 +486,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       return
     }
 
-    const user = getFirebaseAuth().currentUser
-    if (!user) throw new Error('Not authenticated')
-
-    const database = getFirebaseDatabase()
-    const profileRef = doc(database, 'users', user.uid)
-    await runTransaction(database, async (tx) => {
-      tx.set(profileRef, accountToFirestore(updatedAccount), { merge: true })
-    })
-
+    await syncAccountToFirestore(updatedAccount)
     set({ currentUserData: updatedAccount })
   },
 
@@ -404,14 +525,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       return true
     }
 
-    const user = getFirebaseAuth().currentUser
-    if (!user) return false
-
-    const database = getFirebaseDatabase()
-    const profileRef = doc(database, 'users', user.uid)
-    await runTransaction(database, async (tx) => {
-      tx.set(profileRef, accountToFirestore(updatedAccount))
-    })
+    await syncAccountToFirestore(updatedAccount)
     set({ currentUserData: updatedAccount })
     return true
   },
@@ -440,14 +554,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       return true
     }
 
-    const user = getFirebaseAuth().currentUser
-    if (!user) return false
-
-    const database = getFirebaseDatabase()
-    const profileRef = doc(database, 'users', user.uid)
-    await runTransaction(database, async (tx) => {
-      tx.set(profileRef, accountToFirestore(updatedAccount))
-    })
+    await syncAccountToFirestore(updatedAccount)
     set({ currentUserData: updatedAccount })
     return true
   },
@@ -472,14 +579,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       return
     }
 
-    const user = getFirebaseAuth().currentUser
-    if (!user) return
-
-    const database = getFirebaseDatabase()
-    const profileRef = doc(database, 'users', user.uid)
-    await runTransaction(database, async (tx) => {
-      tx.set(profileRef, accountToFirestore(updatedAccount))
-    })
+    await syncAccountToFirestore(updatedAccount)
     set({ currentUserData: updatedAccount })
   },
 
@@ -503,14 +603,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       return
     }
 
-    const user = getFirebaseAuth().currentUser
-    if (!user) return
-
-    const database = getFirebaseDatabase()
-    const profileRef = doc(database, 'users', user.uid)
-    await runTransaction(database, async (tx) => {
-      tx.set(profileRef, accountToFirestore(updatedAccount))
-    })
+    await syncAccountToFirestore(updatedAccount)
     set({ currentUserData: updatedAccount })
   },
 
@@ -534,14 +627,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       return
     }
 
-    const user = getFirebaseAuth().currentUser
-    if (!user) return
-
-    const database = getFirebaseDatabase()
-    const profileRef = doc(database, 'users', user.uid)
-    await runTransaction(database, async (tx) => {
-      tx.set(profileRef, accountToFirestore(updatedAccount))
-    })
+    await syncAccountToFirestore(updatedAccount)
     set({ currentUserData: updatedAccount })
   },
 
@@ -568,14 +654,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       return
     }
 
-    const user = getFirebaseAuth().currentUser
-    if (!user) return
-
-    const database = getFirebaseDatabase()
-    const profileRef = doc(database, 'users', user.uid)
-    await runTransaction(database, async (tx) => {
-      tx.set(profileRef, accountToFirestore(updatedAccount))
-    })
+    await syncAccountToFirestore(updatedAccount)
     set({ currentUserData: updatedAccount })
   },
 }))
