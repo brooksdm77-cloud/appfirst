@@ -83,11 +83,6 @@ export const TopSpecialsBanner: React.FC = () => {
 
   return (
     <div className="space-y-6 mb-8">
-      <div className="alert alert-warning">
-        Prices in this demo are sample values, not current supermarket prices. Products without verified prices are
-        excluded from comparisons and specials.
-      </div>
-
       {/* Toast Notification */}
       {notification && (
         <div className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-slide-in border border-gray-700">
