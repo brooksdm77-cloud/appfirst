@@ -6,6 +6,13 @@ import {
 import { VoiceCommandPanel } from './VoiceCommandPanel'
 import { ShoppingListPhotoImport } from './ShoppingListPhotoImport'
 import { searchProducts, SearchProductOption } from '../services/supermarketSearch'
+import {
+  CHECKOUT_RETAILERS,
+  CheckoutRetailer,
+  formatCheckoutList,
+  prepareRetailerCheckout,
+} from '../services/retailerCheckout'
+import type { PreparedCheckout } from '../services/retailerCheckout'
 
 export const ShoppingListsPanel: React.FC = () => {
   const currentUserData = useAppStore((state) => state.currentUserData)
@@ -18,6 +25,8 @@ export const ShoppingListsPanel: React.FC = () => {
   const [searchResults, setSearchResults] = useState<SearchProductOption[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [addMessage, setAddMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [handoffList, setHandoffList] = useState<'weekly' | 'occasional' | 'all'>('weekly')
+  const [handoffMessage, setHandoffMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
@@ -49,6 +58,67 @@ export const ShoppingListsPanel: React.FC = () => {
   }, [searchQuery])
 
   if (!currentUserData) return null
+
+  const handoffItems = Array.from(new Set([
+    ...(handoffList === 'weekly' || handoffList === 'all' ? currentUserData.lists.weekly : []),
+    ...(handoffList === 'occasional' || handoffList === 'all' ? currentUserData.lists.occasional : []),
+  ]))
+
+  const handleStoreHandoff = async (retailer: CheckoutRetailer) => {
+    setHandoffMessage(null)
+    const checkoutTab = window.open('about:blank', '_blank')
+    if (!checkoutTab) {
+      setHandoffMessage({
+        type: 'error',
+        text: 'Your browser blocked the supermarket tab. Allow pop-ups for SmartGrocer and try again.',
+      })
+      return
+    }
+    checkoutTab.opener = null
+
+    const checkoutItems = handoffItems.map((productName) => ({
+      productName,
+      quantity: 1,
+      barcode: NZ_SUPERMARKET_CATALOGUE[productName]?.barcode,
+    }))
+    let preparedCheckout: PreparedCheckout
+    try {
+      preparedCheckout = await prepareRetailerCheckout(retailer, checkoutItems)
+    } catch (error) {
+      checkoutTab.close()
+      setHandoffMessage({
+        type: 'error',
+        text: error instanceof Error ? `Could not prepare the retailer handoff: ${error.message}` : 'Could not prepare the retailer handoff.',
+      })
+      return
+    }
+
+    checkoutTab.location.href = preparedCheckout.checkoutUrl
+    try {
+      await navigator.clipboard.writeText(formatCheckoutList(checkoutItems))
+    } catch (error) {
+      setHandoffMessage({
+        type: 'error',
+        text: error instanceof Error
+          ? `The retailer shop was opened, but the list could not be copied: ${error.message}`
+          : 'The retailer shop was opened, but the list could not be copied. Check your browser clipboard permissions.',
+      })
+      return
+    }
+
+    const storeName = retailer === 'NewWorld' ? 'New World' : retailer === 'PAKnSAVE' ? "PAK'nSAVE" : retailer
+    setHandoffMessage({
+      type: 'success',
+      text: [
+        preparedCheckout.mode === 'cart'
+          ? `Your ${storeName} cart is ready. Review the items, quantities, substitutions, and final price on the retailer’s site.`
+          : `Copied ${handoffItems.length} item${handoffItems.length === 1 ? '' : 's'}. The ${storeName} shop is open in a new tab; add the items there and choose delivery or Click & Collect.`,
+        preparedCheckout.affiliateTracking === 'active'
+          ? 'Referral tracking is enabled; any commission is subject to the retailer’s partner terms and order confirmation.'
+          : 'Affiliate order tracking is not configured for this store yet.',
+      ].join(' '),
+    })
+  }
 
   const handleAddDirect = async (item: SearchProductOption, list: 'weekly' | 'occasional') => {
     setAddMessage(null)
@@ -87,9 +157,29 @@ export const ShoppingListsPanel: React.FC = () => {
   }
 
   const renderPriceBadges = (prod?: typeof NZ_SUPERMARKET_CATALOGUE[string]) => {
-    if (!prod?.prices) {
+    if (prod?.priceObservations?.length) {
       return (
-        <span className="text-xs text-gray-500 italic">Price lookup pending</span>
+        <div className="space-y-1 text-xs">
+          {prod.priceObservations.map((observation, index) => (
+            <div key={`${observation.store}-${observation.source}-${index}`} className="text-gray-700">
+              <span className="font-semibold">{observation.store}:</span> ${observation.price.toFixed(2)}
+              <span className="text-gray-500"> — {observation.source}</span>
+              {observation.location && <span className="text-gray-500">, {observation.location}</span>}
+              {observation.observedAt && (
+                <span className="text-gray-500">
+                  {' '}— observed {new Date(observation.observedAt).toLocaleString()}
+                </span>
+              )}
+            </div>
+          ))}
+          <p className="text-amber-800">Observed prices only; checkout prices may differ. Other stores are never estimated.</p>
+        </div>
+      )
+    }
+
+    if (!prod?.prices || prod.priceStatus !== 'verified') {
+      return (
+        <span className="text-xs text-gray-500 italic">No verified current price</span>
       )
     }
 
@@ -131,20 +221,19 @@ export const ShoppingListsPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* ── Search & Scrape Supermarket Prices ── */}
+      {/* ── Product search and price lookup ── */}
       <div className="card bg-gradient-to-br from-blue-50 via-indigo-50 to-emerald-50 border-blue-200 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
           <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <span>🔍</span>
-            <span>Search & Scrape Supermarket Prices</span>
+            <span>Search Grocery Products</span>
           </h3>
-          <span className="text-xs font-semibold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full flex items-center gap-1">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Live NZ Pricing Active
+          <span className="text-xs font-semibold text-amber-900 bg-amber-100 px-2.5 py-1 rounded-full">
+            Retailer prices only
           </span>
         </div>
         <p className="text-xs text-gray-600 mb-4">
-          Type any product to search live prices across Woolworths, PAK'nSAVE, and New World.
+          Search results show only prices actually returned by a retailer or data source, with their source and observation details where available. Missing store prices are never estimated.
         </p>
 
         {addMessage && (
@@ -165,7 +254,7 @@ export const ShoppingListsPanel: React.FC = () => {
             />
             {isSearching && (
               <span className="absolute right-3 text-xs text-blue-600 font-semibold animate-pulse flex items-center gap-1">
-                Scraping...
+                Searching...
               </span>
             )}
           </div>
@@ -175,7 +264,7 @@ export const ShoppingListsPanel: React.FC = () => {
             <div className="mt-2 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
               {searchResults.map((item) => (
                 <div
-                  key={item.name}
+                  key={`${item.name}-${item.barcode ?? item.priceObservations?.map((price) => price.store).join('-') ?? 'catalogue'}`}
                   className="p-3.5 hover:bg-blue-50/50 transition flex flex-wrap items-center justify-between gap-3"
                 >
                   <div className="flex items-center gap-3">
@@ -224,6 +313,71 @@ export const ShoppingListsPanel: React.FC = () => {
         <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
           📝 Saved Shopping Lists
         </h2>
+
+        <div className="card mb-4 border-blue-200 bg-blue-50/70">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">🛍️ Continue shopping online</h3>
+              <p className="mt-1 max-w-2xl text-sm text-gray-600">
+                Copy a saved list and open a supermarket’s online shop. Add the items there, then choose delivery or Click & Collect.
+              </p>
+            </div>
+            <label className="text-sm font-medium text-gray-700">
+              List to take
+              <select
+                value={handoffList}
+                onChange={(event) => {
+                  setHandoffList(event.target.value as 'weekly' | 'occasional' | 'all')
+                  setHandoffMessage(null)
+                }}
+                className="input-field mt-1 block py-2"
+              >
+                <option value="weekly">Weekly list</option>
+                <option value="occasional">Occasional list</option>
+                <option value="all">Both lists</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {CHECKOUT_RETAILERS.map((store) => (
+              <button
+                key={store}
+                type="button"
+                onClick={() => void handleStoreHandoff(store)}
+                disabled={handoffItems.length === 0}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-gray-400 ${
+                  handoffItems.length === 0
+                    ? ''
+                    : store === 'Woolworths'
+                      ? 'bg-emerald-700 hover:bg-emerald-800'
+                      : store === 'PAKnSAVE'
+                        ? 'bg-amber-500 text-gray-900 hover:bg-amber-600'
+                        : 'bg-red-700 hover:bg-red-800'
+                }`}
+              >
+                Open {store === 'NewWorld' ? 'New World' : store === 'PAKnSAVE' ? "PAK'nSAVE" : store} & copy list
+              </button>
+            ))}
+          </div>
+
+          {handoffMessage && (
+            <div
+              role="status"
+              className={`mt-3 rounded-lg px-3 py-2 text-sm ${
+                handoffMessage.type === 'success'
+                  ? 'bg-emerald-100 text-emerald-900'
+                  : 'bg-rose-100 text-rose-900'
+              }`}
+            >
+              {handoffMessage.text}
+            </div>
+          )}
+
+          <p className="mt-3 text-xs text-gray-600">
+            This version opens the shop and copies item names; it does not add products to the retailer’s cart. Review product matches, quantities, availability, and final prices on the retailer’s site. Direct-cart and referral capabilities will only be enabled when an approved retailer or provider integration is available.
+          </p>
+        </div>
 
         {/* Weekly Items */}
         <div className="card mb-4">

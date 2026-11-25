@@ -4,14 +4,13 @@ export interface SearchResultProduct {
   category: string
   emoji: string
   barcode?: string
-  prices: {
-    Woolworths: number
-    PAKnSAVE: number
-    NewWorld: number
-  }
-  historicAvg: number
-  priceStatus: 'verified' | 'sample'
-  source: string
+  priceObservations: Array<{
+    store: 'Woolworths' | 'PAKnSAVE' | 'NewWorld'
+    price: number
+    observedAt?: string
+    location?: string
+    source: string
+  }>
 }
 
 const CATEGORY_EMOJIS: Record<string, string> = {
@@ -61,7 +60,6 @@ export async function searchSupermarkets(query: string): Promise<SearchResultPro
   if (!cleanQuery) return []
 
   const results: SearchResultProduct[] = []
-  const seen = new Set<string>()
 
   // 1. Live Query to Woolworths NZ Web API
   try {
@@ -80,27 +78,20 @@ export async function searchSupermarkets(query: string): Promise<SearchResultPro
     if (wwResp.ok) {
       const data = (await wwResp.json()) as any
       const items = data?.products?.items || []
+      const retrievedAt = new Date().toISOString()
 
       for (const item of items) {
         if (!item.name || !item.price) continue
-        const wwPrice = item.price.salePrice || item.price.originalPrice || 0
-        if (wwPrice <= 0) continue
+        const reportedPrice = item.price.salePrice > 0
+          ? item.price.salePrice
+          : item.price.originalPrice
+        const wwPrice = Number(reportedPrice)
+        if (!Number.isFinite(wwPrice) || wwPrice <= 0) continue
 
         const formattedName = item.name
           .trim()
           .replace(/\s+/g, ' ')
           .replace(/\b\w/g, (c: string) => c.toUpperCase())
-
-        const lowerName = formattedName.toLowerCase()
-        if (seen.has(lowerName)) continue
-        seen.add(lowerName)
-
-        // Realistic NZ supermarket spreads:
-        // PAK'nSAVE is ~8-12% lower
-        // New World is ~2% lower or at parity
-        const pnsPrice = parseFloat((wwPrice * 0.9).toFixed(2))
-        const nwPrice = parseFloat((wwPrice * 0.98).toFixed(2))
-        const historic = parseFloat(((wwPrice + pnsPrice + nwPrice) / 3).toFixed(2))
 
         results.push({
           name: formattedName,
@@ -108,14 +99,12 @@ export async function searchSupermarkets(query: string): Promise<SearchResultPro
           category: item.variety || 'Groceries',
           emoji: detectEmoji(formattedName + ' ' + (item.variety || '')),
           barcode: item.barcode || item.sku,
-          prices: {
-            Woolworths: wwPrice,
-            PAKnSAVE: pnsPrice,
-            NewWorld: nwPrice,
-          },
-          historicAvg: historic,
-          priceStatus: 'verified',
-          source: 'Woolworths NZ Live',
+          priceObservations: [{
+            store: 'Woolworths',
+            price: wwPrice,
+            observedAt: retrievedAt,
+            source: 'Woolworths NZ (retrieved)',
+          }],
         })
       }
     }
@@ -136,25 +125,21 @@ export async function searchSupermarkets(query: string): Promise<SearchResultPro
     if (bResp.ok) {
       const bData = (await bResp.json()) as any
       const cheapest = bData?.data?.cheapest
-      if (cheapest?.item && cheapest?.price?.priceCents) {
+      if (cheapest?.item && Number.isFinite(cheapest?.price?.priceCents) && cheapest.price.priceCents > 0) {
         const price = parseFloat((cheapest.price.priceCents / 100).toFixed(2))
         const chain = (cheapest.item.chainLabel || '').toLowerCase()
-        const formattedName = cheapest.item.name
-          .trim()
-          .replace(/\s+/g, ' ')
-          .replace(/\b\w/g, (c: string) => c.toUpperCase())
-
-        const lowerName = formattedName.toLowerCase()
-        if (!seen.has(lowerName)) {
-          seen.add(lowerName)
-          const isWW = chain.includes('woolworths') || chain.includes('countdown')
-          const isPNS = chain.includes('pak')
-          const isNW = chain.includes('world')
-
-          const wwPrice = isWW ? price : parseFloat((price * 1.08).toFixed(2))
-          const pnsPrice = isPNS ? price : parseFloat((price * 0.92).toFixed(2))
-          const nwPrice = isNW ? price : parseFloat((price * 1.02).toFixed(2))
-          const historic = parseFloat(((wwPrice + pnsPrice + nwPrice) / 3).toFixed(2))
+        const store = chain.includes('woolworths') || chain.includes('countdown')
+          ? 'Woolworths'
+          : chain.includes('pak')
+            ? 'PAKnSAVE'
+            : chain.includes('new world')
+              ? 'NewWorld'
+              : null
+        if (store) {
+          const formattedName = cheapest.item.name
+            .trim()
+            .replace(/\s+/g, ' ')
+            .replace(/\b\w/g, (c: string) => c.toUpperCase())
 
           results.push({
             name: formattedName,
@@ -162,14 +147,13 @@ export async function searchSupermarkets(query: string): Promise<SearchResultPro
             category: cheapest.item.category || 'Pantry',
             emoji: detectEmoji(formattedName),
             barcode: cheapest.item.gtin || cheapest.item.externalSku,
-            prices: {
-              Woolworths: wwPrice,
-              PAKnSAVE: pnsPrice,
-              NewWorld: nwPrice,
-            },
-            historicAvg: historic,
-            priceStatus: 'verified',
-            source: 'Baskt NZ Database',
+            priceObservations: [{
+              store,
+              price,
+              observedAt: cheapest.price.observedAt || cheapest.price.updatedAt,
+              location: cheapest.location?.name || cheapest.location?.region,
+              source: 'Baskt NZ (latest observed)',
+            }],
           })
         }
       }

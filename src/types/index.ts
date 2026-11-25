@@ -2,11 +2,20 @@ export interface Product {
   name: string
   category?: string
   emoji?: string
+  barcode?: string
   prices: StorePrices | null
   historicAvg: number | null
-  priceStatus: 'sample' | 'unavailable'
+  priceStatus: 'verified' | 'observed' | 'sample' | 'unavailable'
+  priceObservations?: PriceObservation[]
 }
 
+export interface PriceObservation {
+  store: keyof StorePrices
+  price: number
+  observedAt?: string
+  location?: string
+  source: string
+}
 
 export interface StorePrices {
   Woolworths: number

@@ -99,10 +99,10 @@ export const TopSpecialsBanner: React.FC = () => {
           <div>
             <div className="inline-flex items-center gap-2 bg-blue-500/20 text-blue-300 text-xs font-semibold px-3 py-1 rounded-full border border-blue-500/30 mb-3">
               <span>🇳🇿</span>
-              <span>Kiwi Household Weekly Price Index</span>
+              <span>Kiwi Household Weekly Shop</span>
             </div>
             <h2 className="text-2xl font-bold tracking-tight">
-              Best Price for an Average Weekly Shop
+              Weekly Basket Price Comparison
             </h2>
             <p className="text-gray-300 text-sm mt-1 max-w-xl">
               Example basket for <span className="text-white font-semibold">11 essential everyday items</span> (Milk, Bread, Eggs, Cheese, Bananas, Chicken, Butter, Weet-Bix, Apples, Broccoli & Baked Beans).
@@ -121,6 +121,11 @@ export const TopSpecialsBanner: React.FC = () => {
         </div>
 
         {/* Store Comparison Grid */}
+        {genericBenchmark.pricedItemCount === 0 ? (
+          <p className="mt-6 border-t border-white/10 pt-6 text-sm text-gray-300">
+            A three-store basket comparison needs verified prices from all three supermarkets. No estimates are shown.
+          </p>
+        ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6 pt-6 border-t border-white/10">
           {/* Woolworths */}
           <div className="bg-white/5 hover:bg-white/10 transition-colors p-3.5 rounded-xl border border-white/10">
@@ -174,6 +179,7 @@ export const TopSpecialsBanner: React.FC = () => {
             <p className="text-xs text-emerald-200/80 mt-1">Smart Multi-Store</p>
           </div>
         </div>
+        )}
       </div>
 
       {/* 2. Top Specials of the Day Carousel / Grid */}
@@ -182,17 +188,24 @@ export const TopSpecialsBanner: React.FC = () => {
           <div>
             <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <span>🔥</span>
-              <span>Example Discounts (Sample Data)</span>
+              <span>Current Supermarket Specials</span>
             </h3>
             <p className="text-xs text-gray-500 mt-0.5">
-              Illustrative discounts compared to sample historical baselines
+              Only specials with verified current prices will appear here.
             </p>
           </div>
-          <span className="text-xs bg-amber-100 text-amber-800 font-semibold px-2.5 py-1 rounded-full border border-amber-200">
-            Sample Data
-          </span>
+          {topSpecials.length > 0 && (
+            <span className="text-xs bg-emerald-100 text-emerald-800 font-semibold px-2.5 py-1 rounded-full border border-emerald-200">
+              Verified prices
+            </span>
+          )}
         </div>
 
+        {topSpecials.length === 0 ? (
+          <p className="alert alert-info">
+            No active specials currently meet the 15% discount threshold. Check back soon for updated promotions!
+          </p>
+        ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {topSpecials.map((deal) => {
             const isAlreadyAdded =
@@ -251,6 +264,7 @@ export const TopSpecialsBanner: React.FC = () => {
             )
           })}
         </div>
+        )}
       </div>
     </div>
   )

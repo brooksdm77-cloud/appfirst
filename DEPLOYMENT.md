@@ -110,6 +110,18 @@ git push -u origin main
 
 Your app will be live at: `https://smartgrocer-nz.pages.dev`
 
+#### 4. Authorize the Cloudflare domain for Google sign-in
+
+Firebase must allow the hostname where the app is running before Google sign-in can open. In the Firebase project `smart-shopper-75253`:
+
+1. Open [Firebase Console](https://console.firebase.google.com/) and select `smart-shopper-75253`.
+2. Go to **Authentication → Settings → Authorized domains**.
+3. Click **Add domain** and enter the exact hostname shown in your deployed site's address bar. For the current live link shown in the screenshot, enter `appfirst.brooks-dm77.workers.dev`. If you also use `appfirst.pages.dev`, add that as a separate domain. Enter hostnames only—no `https://`, path, or trailing slash.
+4. If you use a custom domain, add that hostname separately too.
+5. To verify the provider is enabled, go to **Authentication → Sign-in method** and make sure **Google** is enabled.
+
+The Cloudflare Pages hostname belongs in **Authorized domains**; do not change `VITE_FIREBASE_AUTH_DOMAIN` to the Cloudflare hostname. This is a Firebase project setting, so a new Cloudflare deployment is not needed. Try Google sign-in again after saving.
+
 ---
 
 ## Option 3: Deploy to Both (Dual Setup)

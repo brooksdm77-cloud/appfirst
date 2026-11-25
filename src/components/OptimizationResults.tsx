@@ -27,7 +27,7 @@ export const OptimizationResults: React.FC<OptimizationResultsProps> = ({ result
       {result.unpricedItems.length > 0 && (
         <div className="alert alert-warning">
           {result.unpricedItems.length} item(s) are excluded because price data is unavailable. The totals below
-          include {result.pricedItemCount} of {itemCount} items and use sample prices only.
+          include {result.pricedItemCount} of {itemCount} items with verified prices.
         </div>
       )}
 
@@ -75,7 +75,7 @@ export const OptimizationResults: React.FC<OptimizationResultsProps> = ({ result
               {formatCurrency(result.savings)}
             </div>
             <p className="text-xs text-gray-700 mt-1 font-medium">
-              Estimated sample-price difference: {percentageSavings}% by splitting items across supermarkets
+              Potential savings: {percentageSavings}% by splitting items across supermarkets
             </p>
           </div>
           <div className="text-5xl opacity-80">🎉</div>
@@ -138,4 +138,3 @@ export const OptimizationResults: React.FC<OptimizationResultsProps> = ({ result
     </div>
   )
 }
-

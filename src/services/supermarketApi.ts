@@ -66,7 +66,7 @@ export async function getCatalog(): Promise<CatalogProduct[]> {
     }
   }
 
-  // Return catalogue products with accurate verified prices
+  // Return the local sample catalogue when no live provider is configured.
   return catalogData.map((p) => ({
     name: p.name,
     category: p.category,

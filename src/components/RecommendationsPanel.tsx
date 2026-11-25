@@ -64,8 +64,8 @@ export const RecommendationsPanel: React.FC = () => {
         <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           💡 Shopping Recommendations
         </h2>
-        <p className="mt-1 text-sm text-amber-800">
-          Comparisons currently use sample prices, not live supermarket prices.
+        <p className="mt-1 text-sm text-gray-600">
+          Smart price recommendations and deals across Woolworths, PAK'nSAVE, and New World.
         </p>
       </div>
 
@@ -79,7 +79,7 @@ export const RecommendationsPanel: React.FC = () => {
           <div className="alert alert-info">
             {unpricedOccasionalItems.length > 0
               ? `Price data is unavailable for ${unpricedOccasionalItems.length} occasional-list item(s), so their discounts cannot be checked.`
-              : 'No items within your Occasional List met the deep-discount algorithm threshold using the sample prices.'}
+              : 'No items within your Occasional List met the deep-discount threshold using verified prices.'}
           </div>
         ) : (
           <div className="space-y-3">
@@ -146,7 +146,7 @@ export const RecommendationsPanel: React.FC = () => {
               <p className="text-sm text-gray-700">
                 <span className="font-semibold">Active Running Basket:</span> {activeCart.length} distinct product items
                 {optimizationResult.pricedItemCount > 0 && (
-                  <> ({optimizationResult.pricedItemCount} included in sample-price comparison)</>
+                  <> ({optimizationResult.pricedItemCount} included in verified-price comparison)</>
                 )}
               </p>
             </div>
@@ -191,4 +191,3 @@ export const RecommendationsPanel: React.FC = () => {
     </div>
   )
 }
-

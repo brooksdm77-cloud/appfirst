@@ -422,7 +422,7 @@ export const AuthScreen: React.FC = () => {
         )}
       </main>
       <p className="mx-auto mt-6 max-w-lg text-center text-xs text-gray-500">
-        Prices shown in the app are sample data and may not reflect current supermarket prices.
+        Compare prices and optimize your grocery shopping across New Zealand supermarkets.
       </p>
     </div>
   )

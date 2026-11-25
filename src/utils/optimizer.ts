@@ -50,7 +50,7 @@ export function processBasketOptimization(itemsList: string[]): OptimizationResu
     if (
       !product ||
       !product.prices ||
-      product.priceStatus === 'unavailable'
+      product.priceStatus !== 'verified'
     ) {
       unpricedItems.push(itemName)
       continue
@@ -133,7 +133,7 @@ export function getDiscountedItems(
       const product = NZ_SUPERMARKET_CATALOGUE[itemName]
       if (
         !product?.prices ||
-        product.priceStatus === 'unavailable' ||
+        product.priceStatus !== 'verified' ||
         product.historicAvg === null
       ) return null
 
